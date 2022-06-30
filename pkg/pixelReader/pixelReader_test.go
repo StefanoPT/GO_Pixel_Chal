@@ -243,14 +243,14 @@ func BenchmarkParseMainImage(b *testing.B) {
 
 func BenchmarkParseImageFiles(b *testing.B) {
 	//Arrange
-	fname := "../../Gold/main.raw"
+	fname := "../../Bronze/main.raw"
 	ReadingFactor = 4
 	err := parseMainImage(&fname)
 	if err != nil {
 		b.Fatalf("%v", err)
 	}
 
-	existingDir := "../../Gold"
+	existingDir := "../../Bronze"
 
 	for i := 0; i < b.N; i++ {
 		//Act
@@ -260,19 +260,23 @@ func BenchmarkParseImageFiles(b *testing.B) {
 		if err != nil {
 			b.Error("Failed to parse existing directory")
 		}
+		if Best.Percent < Second.Percent || Best.Percent < Third.Percent || Second.Percent < Third.Percent {
+			b.Error("Failed to order TOP3")
+		}
 	}
 }
 
 func BenchmarkParseImageFilesReadingFactorOne(b *testing.B) {
 	//Arrange
-	fname := "../../Gold/main.raw"
+	fname := "../../Bronze/main.raw"
 	ReadingFactor = 1
+	CheckForEnough = true
 	err := parseMainImage(&fname)
 	if err != nil {
 		b.Fatalf("%v", err)
 	}
 
-	existingDir := "../../Gold"
+	existingDir := "../../Bronze"
 
 	for i := 0; i < b.N; i++ {
 		//Act
@@ -281,6 +285,9 @@ func BenchmarkParseImageFilesReadingFactorOne(b *testing.B) {
 		//Assert
 		if err != nil {
 			b.Error("Failed to parse existing directory")
+		}
+		if Best.Percent < Second.Percent || Best.Percent < Third.Percent || Second.Percent < Third.Percent {
+			b.Error("Failed to order TOP3")
 		}
 	}
 	ReadingFactor = 4
@@ -288,14 +295,14 @@ func BenchmarkParseImageFilesReadingFactorOne(b *testing.B) {
 
 func BenchmarkParseImageFilesReadingFactorTwo(b *testing.B) {
 	//Arrange
-	fname := "../../Gold/main.raw"
+	fname := "../../Bronze/main.raw"
 	ReadingFactor = 2
 	err := parseMainImage(&fname)
 	if err != nil {
 		b.Fatalf("%v", err)
 	}
 
-	existingDir := "../../Gold"
+	existingDir := "..\\..\\Bronze"
 
 	for i := 0; i < b.N; i++ {
 		//Act
@@ -304,6 +311,10 @@ func BenchmarkParseImageFilesReadingFactorTwo(b *testing.B) {
 		//Assert
 		if err != nil {
 			b.Error("Failed to parse existing directory")
+		}
+
+		if Best.Percent < Second.Percent || Best.Percent < Third.Percent || Second.Percent < Third.Percent {
+			b.Error("Failed to order TOP3")
 		}
 	}
 	ReadingFactor = 4

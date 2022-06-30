@@ -5,12 +5,13 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"sync"
 )
 
 const PixelSize = 3
 
 const NotEnoughEquals = -1
+
+var CheckForEnough = false
 
 var ReadingFactor = 1
 
@@ -36,26 +37,13 @@ var Best Result
 var Second Result
 var Third Result
 
-type Here struct {
-	N int
-	M sync.Mutex
-}
-
-var HereGlobal Here
-
-/*func (h *Here) inc() {
-	h.M.Lock()
-	h.N++
-	defer h.M.Unlock()
-}*/
-
-func updateResults(numEqual int, fname string) {
+func updateResults(numEqual int, fname *string) {
 	////HereGlobal.inc()
 	percent := (float64(numEqual) / float64(MainImage.NumberPixels)) * 100
 	if percent <= Third.Percent {
 		return
 	}
-	res := Result{File: fname, Percent: percent, NumberOfEqualPixels: numEqual}
+	res := Result{File: *fname, Percent: percent, NumberOfEqualPixels: numEqual}
 	if percent > Best.Percent {
 		Third = Second
 		Second = Best
@@ -126,7 +114,9 @@ func parseFiles(file fs.DirEntry, dir string, ch chan struct{}) {
 		numEqual += <-resultChannel
 	}
 
-	updateResults(numEqual, fname)
+	if numEqual != NotEnoughEquals {
+		updateResults(numEqual, &fname)
+	}
 }
 
 /*func checkIfStillPossible(numberOfEqualPixels, startingPos int) bool {
@@ -154,15 +144,28 @@ func comparePixels(r, g, b byte, matrixPos int) bool {
 	return true
 }
 
+func checkIfStillPossible(mainMatrixPos, numberOfEqualPixels int) bool {
+	leftOverPixels := (MainImage.NumberPixels - mainMatrixPos/PixelSize)
+	return (leftOverPixels + numberOfEqualPixels) > Third.NumberOfEqualPixels
+}
+
 //parseAndCompareMatrixes takes the starting point in the Main image (the X coordinate) and a few bytes to read and reads them 3 by 3, comparing the resulting RGB to the Main Image
-func parseAndCompareMatrixes(startingPoint, readTo int, filePiece []byte, ch chan int) {
+func parseAndCompareMatrixes(mainMatrixPos, readTo int, filePiece []byte, ch chan int) {
 	numberOfEqualPixels := 0
 	//lenght := readTo - startingPoint
 	for i := 0; i < len(filePiece); i += PixelSize {
-		if equals := comparePixels(filePiece[i], filePiece[i+1], filePiece[i+2], startingPoint); equals {
+		if equals := comparePixels(filePiece[i], filePiece[i+1], filePiece[i+2], mainMatrixPos); equals {
 			numberOfEqualPixels += 1
 		}
-		startingPoint += PixelSize
+
+		if CheckForEnough && ReadingFactor == 1 {
+			if possible := checkIfStillPossible(mainMatrixPos, numberOfEqualPixels); !possible {
+				ch <- NotEnoughEquals
+				return
+			}
+		}
+		mainMatrixPos += PixelSize
+
 	}
 	ch <- numberOfEqualPixels
 
@@ -253,7 +256,6 @@ func setUp() {
 	Best = Result{Percent: 0.0}
 	Second = Result{Percent: 0.0}
 	Third = Result{Percent: 0.0}
-	HereGlobal = Here{N: 0, M: sync.Mutex{}}
 }
 
 func Run(directory, mainImage *string) {
@@ -274,6 +276,4 @@ func Run(directory, mainImage *string) {
 	if err != nil {
 		return
 	}
-
-	fmt.Println(HereGlobal.N)
 }
